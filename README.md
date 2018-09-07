@@ -1,2 +1,2 @@
 # ipc_sock
-Test for socket ipc
+Basic demo of socket ipc. Client Server
