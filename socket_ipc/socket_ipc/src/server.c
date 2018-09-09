@@ -75,6 +75,7 @@ int main(int argc, char const *argv[]){
     int master_fd, aux_fd, max_sd, client_sks[max_clients];
     // Timeout structures
     struct timeval timeout;
+    int activity = -1;
     
     // Clear file variables
     memset(&address, 0, sizeof(struct sockaddr_in));
@@ -98,6 +99,7 @@ int main(int argc, char const *argv[]){
         // Block on read to wait for new input
         FD_ZERO(&read_set);
         FD_SET(master_fd, &read_set);
+        activity = -1;
         
         // Define the timeout timer of each socket
         timeout.tv_sec = 3;
@@ -118,10 +120,15 @@ int main(int argc, char const *argv[]){
         }
         
         // Wait for some activity in one of the sockets
-        if(select(FD_SETSIZE, &read_set, NULL, NULL, &timeout) < 0){
+        activity = select(FD_SETSIZE, &read_set, NULL, NULL, &timeout);
+        
+        if(activity < 0){
             perror("select");
             close(master_fd);
             exit(EXIT_FAILURE);
+        }
+        else if(activity == 0){
+            
         }
         
         // Handle incoming connetions
