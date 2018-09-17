@@ -4,11 +4,6 @@
 //
 //  Created by Pedro Salazar on 06/09/18.
 //
-
-#include "general.h"
-
-
-// Client side C/C++ program to demonstrate Socket programming
 #include <unistd.h>
 #include <stdio.h>
 #include <sys/socket.h>
@@ -16,6 +11,8 @@
 #include <netinet/in.h>
 #include <string.h>
 #include <arpa/inet.h>
+
+#include "general.h"
 
 static int create_cli_socket(struct sockaddr_in *address){
     int fd = -1;
