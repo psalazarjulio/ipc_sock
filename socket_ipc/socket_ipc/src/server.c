@@ -13,6 +13,8 @@
 
 #include "general.h"
 
+
+
 /**
  * This function creates a reliable socket with port reuse.
  * The socket file descriptor is returned on success, -1 otherwise
@@ -45,7 +47,7 @@ static int create_srv_socket(struct sockaddr_in *address){
     return fd;
 }
 
-ssize_t read_from_client (int filedes){
+static ssize_t read_from_client (int filedes){
     char buffer[MAX_MSG_SIZE] = {0};
     ssize_t nbytes;
     
@@ -57,7 +59,7 @@ ssize_t read_from_client (int filedes){
     }
     else if (nbytes == 0){
     /* End-of-file. */
-        return -1;
+        return nbytes;
     }
     else{
         /* Data read. */
@@ -66,24 +68,27 @@ ssize_t read_from_client (int filedes){
     }
 }
 
+
 int main(int argc, char const *argv[]){
     ssize_t read_size;
-    struct sockaddr_in address;
-    int addrlen = 0;
     fd_set read_set;
     u_int8_t max_clients = 30;
-    int master_fd, aux_fd, max_sd, client_sks[max_clients];
+    int master_fd, aux_fd, maxfd, client_sks[max_clients], addrlen = 0, activity = -1;
     // Timeout structures
     struct timeval timeout;
+    struct sockaddr_in address;
     
     // Clear file variables
     memset(&address, 0, sizeof(struct sockaddr_in));
     
+    // Listen socket configuration
     address.sin_family = AF_INET;
     address.sin_addr.s_addr = INADDR_ANY;
     address.sin_port = htons(SRV_PORT);
-    
     addrlen = sizeof(address);
+    
+    // Signal hadler o struct configuration
+    
     
     if((master_fd = create_srv_socket(&address)) < 0){
         exit(EXIT_FAILURE);
@@ -98,12 +103,13 @@ int main(int argc, char const *argv[]){
         // Block on read to wait for new input
         FD_ZERO(&read_set);
         FD_SET(master_fd, &read_set);
+        activity = -1;
         
         // Define the timeout timer of each socket
         timeout.tv_sec = 3;
         timeout.tv_usec = 0;
         
-        max_sd = master_fd;
+        maxfd = master_fd;
         
         // Add all clients to the set after zero
         for (int i = 0; i < max_clients; i++){
@@ -112,16 +118,25 @@ int main(int argc, char const *argv[]){
             if (aux_fd > 0){
                 FD_SET(aux_fd, &read_set);
             }
-            if (aux_fd > max_sd){
-                max_sd = aux_fd;
+            if (aux_fd > maxfd){
+                maxfd = aux_fd;
             }
         }
         
         // Wait for some activity in one of the sockets
-        if(select(FD_SETSIZE, &read_set, NULL, NULL, &timeout) < 0){
+        activity = select(maxfd + 1, &read_set, NULL, NULL, &timeout);
+        
+        if (activity < 0 && errno == EINTR){
+            continue;
+        }
+        
+        if(activity < 0){
             perror("select");
             close(master_fd);
             exit(EXIT_FAILURE);
+        }
+        else if(activity == 0){
+            
         }
         
         // Handle incoming connetions
@@ -142,20 +157,19 @@ int main(int argc, char const *argv[]){
             }
         }
         // Look for data in other sockets
-        for (int i = 0; i <max_clients; i++){
+        for (int i = 0; i < max_clients; i++){
             if(FD_ISSET(client_sks[i] ,&read_set)){
-                if ((read_size = read_from_client(client_sks[i])) < 0){
+                if ((read_size = read_from_client(client_sks[i])) <= 0){
+                    printf("Server: Client %d terminated connection", i);
                     close(client_sks[i]);
                     FD_CLR(i, &read_set);
+                    client_sks[i] = 0;
                 }
                 else{
                     char *rsp = "Hello from server";
-                    send(i , rsp , strlen(rsp) , 0 );
+                    write(client_sks[i] , rsp , strlen(rsp));
                     printf("Hello message sent\n");
                 }
-                close(client_sks[i]);
-                client_sks[i] = 0;
-                
             }
         }
     }
