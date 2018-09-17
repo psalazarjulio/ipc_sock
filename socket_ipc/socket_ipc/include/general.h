@@ -8,6 +8,8 @@
 #ifndef general_h
 #define general_h
 
+#include <stdio.h>
+
 #define SRV_PORT 8000
 #define SRV_ADDR "127.0.0.1"
 #define MAX_MSG_SIZE 1024

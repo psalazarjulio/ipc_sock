@@ -5,7 +5,6 @@
 //  Created by Pedro Salazar on 06/09/18.
 //
 #include <unistd.h>
-#include <stdio.h>
 #include <sys/socket.h>
 #include <stdlib.h>
 #include <netinet/in.h>
@@ -13,6 +12,8 @@
 #include <arpa/inet.h>
 
 #include "general.h"
+#include "server.h"
+#include "client.h"
 
 static int create_cli_socket(struct sockaddr_in *address){
     int fd = -1;
@@ -40,7 +41,24 @@ static int create_cli_socket(struct sockaddr_in *address){
     return fd;
 }
 
-int main(int argc, char const *argv[])
+static int establish_remote_connection(struct sockaddr_in * address){
+    
+    int max_retry = 10, current_retry = 0, fd = -1;
+    
+    while (current_retry < max_retry){
+        
+        if((fd = create_cli_socket(address)) > 0){
+            break;
+        }
+        else{
+            sleep(current_retry);
+            current_retry *= 2;
+        }
+    }
+    return fd;
+}
+
+int connect_to_remote_node(char * remote_host_address, int remote_host_port)
 {
     //struct sockaddr_in address;
     int sock = 0;

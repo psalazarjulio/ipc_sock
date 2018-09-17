@@ -1,7 +1,6 @@
 // Server side C/C++ program to demonstrate Socket programming
 
 #include <unistd.h>
-#include <stdio.h>
 #include <sys/socket.h>
 #include <stdlib.h>
 #include <netinet/in.h>
@@ -69,13 +68,11 @@ static ssize_t read_from_client (int filedes){
 }
 
 
-int main(int argc, char const *argv[]){
+int server_create(){
     ssize_t read_size;
-    fd_set read_set;
-    u_int8_t max_clients = 30;
-    int master_fd, aux_fd, maxfd, client_sks[max_clients], addrlen = 0, activity = -1;
+    
+    int addrlen = 0, activity = -1;
     // Timeout structures
-    struct timeval timeout;
     struct sockaddr_in address;
     
     // Clear file variables
@@ -83,95 +80,20 @@ int main(int argc, char const *argv[]){
     
     // Listen socket configuration
     address.sin_family = AF_INET;
-    address.sin_addr.s_addr = INADDR_ANY;
-    address.sin_port = htons(SRV_PORT);
+    address.sin_addr.s_addr = inet_addr(SRV_ADDR);
+    address.sin_port = htons(0);
     addrlen = sizeof(address);
-    
-    // Signal hadler o struct configuration
-    
     
     if((master_fd = create_srv_socket(&address)) < 0){
         exit(EXIT_FAILURE);
     }
+    
+    fprintf(stdout, "Node listening on addr=%s, port= %d", SRV_ADDR, address.sin_port);
     
     if(listen(master_fd, 1) < 0){
         perror("listen");
         exit(EXIT_FAILURE);
     }
     
-    while(1){
-        // Block on read to wait for new input
-        FD_ZERO(&read_set);
-        FD_SET(master_fd, &read_set);
-        activity = -1;
-        
-        // Define the timeout timer of each socket
-        timeout.tv_sec = 3;
-        timeout.tv_usec = 0;
-        
-        maxfd = master_fd;
-        
-        // Add all clients to the set after zero
-        for (int i = 0; i < max_clients; i++){
-            aux_fd = client_sks[i];
-            
-            if (aux_fd > 0){
-                FD_SET(aux_fd, &read_set);
-            }
-            if (aux_fd > maxfd){
-                maxfd = aux_fd;
-            }
-        }
-        
-        // Wait for some activity in one of the sockets
-        activity = select(maxfd + 1, &read_set, NULL, NULL, &timeout);
-        
-        if (activity < 0 && errno == EINTR){
-            continue;
-        }
-        
-        if(activity < 0){
-            perror("select");
-            close(master_fd);
-            exit(EXIT_FAILURE);
-        }
-        else if(activity == 0){
-            
-        }
-        
-        // Handle incoming connetions
-        if(FD_ISSET(master_fd, &read_set)){
-            int new_socket;
-            
-            if ((new_socket = accept(master_fd, (struct sockaddr *)&address, (socklen_t*)&addrlen)) < 0){
-                perror("accept");
-                exit(EXIT_FAILURE);
-            }
-            fprintf (stderr, "Server: connection from host=%s, port= %hd.\n", inet_ntoa (address.sin_addr), ntohs(address.sin_port));
-            
-            for (int i=0; i<max_clients; i++){
-                if(client_sks[i] == 0){
-                    client_sks[i] = new_socket;
-                    break;
-                }
-            }
-        }
-        // Look for data in other sockets
-        for (int i = 0; i < max_clients; i++){
-            if(FD_ISSET(client_sks[i] ,&read_set)){
-                if ((read_size = read_from_client(client_sks[i])) <= 0){
-                    printf("Server: Client %d terminated connection", i);
-                    close(client_sks[i]);
-                    FD_CLR(i, &read_set);
-                    client_sks[i] = 0;
-                }
-                else{
-                    char *rsp = "Hello from server";
-                    write(client_sks[i] , rsp , strlen(rsp));
-                    printf("Hello message sent\n");
-                }
-            }
-        }
-    }
     
 }
