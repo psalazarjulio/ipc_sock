@@ -8,6 +8,8 @@
 #ifndef client_h
 #define client_h
 
-#include <stdio.h>
+#include "general.h"
+
+int client_connect_to_remote_node(char * remote_host_address, int remote_host_port);
 
 #endif /* client_h */

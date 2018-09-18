@@ -12,60 +12,32 @@
 #include <arpa/inet.h>
 
 #include "general.h"
-#include "server.h"
 #include "client.h"
 
-static int create_cli_socket(struct sockaddr_in *address){
-    int fd = -1;
-    int opt = 1;
-    
-    // Creating socket FD for IP based socket, over reliable link.
-    if((fd = socket(AF_INET, SOCK_STREAM, 0)) == -1){
-        perror("Socket creation failed");
-        return -1;
-    }
-    
-    // Set the socket for multiple protocol support, address and port reuse
-    if (setsockopt(fd, SOL_SOCKET, SO_REUSEPORT, &opt, sizeof(opt)) < 0){
-        perror("setsockopt");
-        close(fd);
-        return -1;
-    }
-    
-    // Forcefully attaching socket to the port
-    if(bind(fd, (struct sockaddr *) address, sizeof(struct sockaddr_in)) < 0){
-        perror("bind failed");
-        close(fd);
-        return -1;
-    }
-    return fd;
-}
 
-static int establish_remote_connection(struct sockaddr_in * address){
+static int client_establish_remote_connection(struct sockaddr_in * address, int sock){
     
-    int max_retry = 10, current_retry = 0, fd = -1;
+    int max_retry = 8, current_retry = 1, factor = 2;
     
     while (current_retry < max_retry){
-        
-        if((fd = create_cli_socket(address)) > 0){
-            break;
+        if ((connect(sock, (struct sockaddr *)&address, sizeof(address))) < 0){
+            perror("Connect");
+            sleep(current_retry);
+            current_retry *= factor;
         }
         else{
-            sleep(current_retry);
-            current_retry *= 2;
+            return 0;
         }
     }
-    return fd;
+    return -1;
 }
 
-int connect_to_remote_node(char * remote_host_address, int remote_host_port)
-{
+int client_connect_to_remote_node(char * remote_host_address, int remote_host_port){
+    
     //struct sockaddr_in address;
     int sock = 0;
-    ssize_t read_size;
     struct sockaddr_in serv_addr;
     char *snd_str = "Hello from client";
-    char buffer[MAX_MSG_SIZE] = {0};
     
     // Creating socket FD for IP based socket, over reliable link.
     if ((sock = socket(AF_INET, SOCK_STREAM, 0)) < 0){
@@ -76,7 +48,8 @@ int connect_to_remote_node(char * remote_host_address, int remote_host_port)
     memset(&serv_addr, '0', sizeof(serv_addr));
     
     serv_addr.sin_family = AF_INET;
-    serv_addr.sin_port = htons(SRV_PORT);
+    serv_addr.sin_port = htons(remote_host_port);
+    serv_addr.sin_addr.s_addr = inet_addr(remote_host_address);
     
     // Convert IPv4 and IPv6 addresses from text to binary form
     if(inet_pton(AF_INET, SRV_ADDR, &serv_addr.sin_addr) <=0 ){
@@ -84,18 +57,13 @@ int connect_to_remote_node(char * remote_host_address, int remote_host_port)
         return -1;
     }
     
-    if (connect(sock, (struct sockaddr *)&serv_addr, sizeof(serv_addr)) < 0){
-        printf("\nConnection Failed \n");
+    if(client_establish_remote_connection(&serv_addr, sock) < 0){
         return -1;
     }
     
     write(sock , snd_str , strlen(snd_str));
     printf("Hello message sent\n");
     
-    read_size = read(sock , buffer, 1024);
-    printf("Received from server: %s\n",buffer );
-    
-    close(sock);
-    
-    return 0;
+    return sock;
 }
+

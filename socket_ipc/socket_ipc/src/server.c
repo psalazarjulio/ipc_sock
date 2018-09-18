@@ -11,8 +11,7 @@
 #include <arpa/inet.h>
 
 #include "general.h"
-
-
+#include "server.h"
 
 /**
  * This function creates a reliable socket with port reuse.
@@ -46,7 +45,7 @@ static int create_srv_socket(struct sockaddr_in *address){
     return fd;
 }
 
-static ssize_t read_from_client (int filedes){
+ssize_t server_read_from_client (int filedes){
     char buffer[MAX_MSG_SIZE] = {0};
     ssize_t nbytes;
     
@@ -67,33 +66,38 @@ static ssize_t read_from_client (int filedes){
     }
 }
 
-
-int server_create(){
-    ssize_t read_size;
+int server_create(char * local_addr, int local_port){
     
-    int addrlen = 0, activity = -1;
-    // Timeout structures
-    struct sockaddr_in address;
+    int addrlen = 0, fd = -1;
+    struct sockaddr_in address, aux_address;
+    unsigned int aux_address_len = sizeof(aux_address);
+    char my_addr[16];
     
     // Clear file variables
     memset(&address, 0, sizeof(struct sockaddr_in));
     
     // Listen socket configuration
     address.sin_family = AF_INET;
-    address.sin_addr.s_addr = inet_addr(SRV_ADDR);
+    address.sin_addr.s_addr = INADDR_ANY; // TODO: Hardcoded so far
     address.sin_port = htons(0);
     addrlen = sizeof(address);
     
-    if((master_fd = create_srv_socket(&address)) < 0){
+    if((fd = create_srv_socket(&address)) < 0){
+        fprintf(stdout, "Unable to create socket");
         exit(EXIT_FAILURE);
     }
     
-    fprintf(stdout, "Node listening on addr=%s, port= %d", SRV_ADDR, address.sin_port);
+    if(getsockname(fd, (struct sockaddr *) &aux_address , &aux_address_len)){
+        perror("getsockname");
+    }
     
-    if(listen(master_fd, 1) < 0){
+    inet_ntop(AF_INET, &aux_address.sin_addr, my_addr, sizeof(my_addr));
+    
+    printf("Node listening on addr=%s, port=%d\n", my_addr, ntohs(aux_address.sin_port));
+    
+    if(listen(fd, 1) < 0){
         perror("listen");
         exit(EXIT_FAILURE);
     }
-    
-    
+    return fd;
 }
