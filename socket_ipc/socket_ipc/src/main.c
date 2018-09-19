@@ -17,8 +17,7 @@
 #include <string.h>
 
 #include "general.h"
-#include "server.h"
-#include "client.h"
+#include "connection_manager.h"
 
 static void usage(char * funcname){
     fprintf(stderr, "Usage: %s -a <address_to_connect> -p <port_connect>\n", funcname);
@@ -40,7 +39,7 @@ static void mainloop(int master_fd, char * remote_host_address, int remote_host_
     
     if (remote_host_port > 0){
         fprintf(stdout, "Configuring client \n ");
-        parent_sk = client_connect_to_remote_node(remote_host_address, remote_host_port);
+        parent_sk = connection_manager_create_remote_connection(remote_host_address, remote_host_port);
     }
     else{
         fprintf(stdout, "Client connection not started by default\n");
@@ -48,6 +47,13 @@ static void mainloop(int master_fd, char * remote_host_address, int remote_host_
     
     // Zero structures
     memset(client_sks, 0, sizeof(client_sks));
+    
+    // Define the timeout timer of each socket
+    timeout.tv_sec = 3;
+    timeout.tv_usec = 0;
+    
+    
+    maxfd = (master_fd > parent_sk) ? master_fd : parent_sk;
     
     // operation loop
     while(1){
@@ -58,12 +64,6 @@ static void mainloop(int master_fd, char * remote_host_address, int remote_host_
             FD_SET(parent_sk, &read_set);
         }
         activity = -1;
-        
-        // Define the timeout timer of each socket
-        timeout.tv_sec = 3;
-        timeout.tv_usec = 0;
-        
-        maxfd = master_fd;
         
         // Add all clients to the set after zero
         for (int i = 0; i < max_clients; i++){
@@ -113,7 +113,7 @@ static void mainloop(int master_fd, char * remote_host_address, int remote_host_
         // Look for data in other sockets
         for (int i = 0; i < max_clients; i++){
             if(FD_ISSET(client_sks[i] ,&read_set)){
-                if ((read_size = server_read_from_client(client_sks[i])) <= 0){
+                if ((read_size = connection_manager_read_from_peer(client_sks[i])) <= 0){
                     printf("Server: Client %d terminated connection\n", i);
                     close(client_sks[i]);
                     FD_CLR(i, &read_set);
@@ -175,7 +175,7 @@ int main(int argc, char ** argv){
     }
     
     // Create server
-    local_socket = server_create(SRV_ADDR, 0);
+    local_socket = connection_manager_create_listner(SRV_ADDR, 0);
     
     // Create control socket
     
