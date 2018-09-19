@@ -21,8 +21,10 @@
 #include "client.h"
 
 static void usage(char * funcname){
-    fprintf(stderr, "Show usage message\n");
-    fprintf(stderr, "%s -a <address_to_connect> -p <port_connect>\n", funcname);
+    fprintf(stderr, "Usage: %s -a <address_to_connect> -p <port_connect>\n", funcname);
+    fprintf(stderr, "\n");
+    fprintf(stderr, "\t-p\t\t port number of remote host\n");
+    fprintf(stderr, "\t-a\t\t address of remote host\n");
     fprintf(stderr, "\n");
 }
 
@@ -30,18 +32,22 @@ static void mainloop(int master_fd, char * remote_host_address, int remote_host_
     
     ssize_t read_size;
     fd_set read_set;
-    unsigned int max_clients = 30;
+    unsigned int max_clients = 16;
     struct timeval timeout;
     int aux_fd, maxfd, parent_sk = 0, client_sks[max_clients], activity = -1;
     struct sockaddr_in address;
     int addrlen = sizeof(address);
     
     if (remote_host_port > 0){
+        fprintf(stdout, "Configuring client \n ");
         parent_sk = client_connect_to_remote_node(remote_host_address, remote_host_port);
     }
     else{
         fprintf(stdout, "Client connection not started by default\n");
     }
+    
+    // Zero structures
+    memset(client_sks, 0, sizeof(client_sks));
     
     // operation loop
     while(1){
@@ -115,7 +121,6 @@ static void mainloop(int master_fd, char * remote_host_address, int remote_host_
                 }
                 else{
                     char *rsp = "Hello from server\n";
-                    printf("Hello message sent\n");
                     write(client_sks[i] , rsp , strlen(rsp));
                     printf("Hello message sent\n");
                 }
@@ -134,7 +139,7 @@ int main(int argc, char ** argv){
     
     printf("Starting Node\n");
     
-    while ((c = getopt (argc, argv, "ap")) != -1){
+    while ((c = getopt (argc, argv, "a:p:")) != -1){
         switch (c){
             case 'p':
                 remote_port = atoi(optarg);
@@ -146,27 +151,28 @@ int main(int argc, char ** argv){
                 if (optopt == 'p'){
                     fprintf (stderr, "Option -%c requires an argument.\n", optopt);
                     usage(argv[0]);
+                    exit(1);
                 }
                 else if (optopt == 'a'){
                     fprintf (stderr, "Option -%c requires an argument.\n", optopt);
                     usage(argv[0]);
+                    exit(1);
                 }
                 else if (isprint (optopt)){
                     fprintf (stderr, "Unknown option `-%c'.\n", optopt);
                     usage(argv[0]);
+                    exit(1);
                 }
                 else{
                     fprintf (stderr,"Unknown option character `\\x%x'.\n", optopt);
                     usage(argv[0]);
+                    exit(1);
                 }
-                return 1;
             default:
                 usage(argv[0]);
                 exit(1);
         }
     }
-    
-    printf("No options passed \n");
     
     // Create server
     local_socket = server_create(SRV_ADDR, 0);

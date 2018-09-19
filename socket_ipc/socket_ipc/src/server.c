@@ -61,7 +61,7 @@ ssize_t server_read_from_client (int filedes){
     }
     else{
         /* Data read. */
-        fprintf (stderr, "Server: got message: '%s'\n", buffer);
+        fprintf (stderr, "Got message: '%s'\n", buffer);
         return nbytes;
     }
 }
@@ -78,8 +78,8 @@ int server_create(char * local_addr, int local_port){
     
     // Listen socket configuration
     address.sin_family = AF_INET;
-    address.sin_addr.s_addr = INADDR_ANY; // TODO: Hardcoded so far
-    address.sin_port = htons(0);
+    address.sin_addr.s_addr = INADDR_ANY; // TODO: Listen on any port
+    address.sin_port = htons(0);         //
     addrlen = sizeof(address);
     
     if((fd = create_srv_socket(&address)) < 0){
@@ -90,9 +90,7 @@ int server_create(char * local_addr, int local_port){
     if(getsockname(fd, (struct sockaddr *) &aux_address , &aux_address_len)){
         perror("getsockname");
     }
-    
     inet_ntop(AF_INET, &aux_address.sin_addr, my_addr, sizeof(my_addr));
-    
     printf("Node listening on addr=%s, port=%d\n", my_addr, ntohs(aux_address.sin_port));
     
     if(listen(fd, 1) < 0){

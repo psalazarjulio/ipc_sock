@@ -18,14 +18,15 @@
 static int client_establish_remote_connection(struct sockaddr_in * address, int sock){
     
     int max_retry = 8, current_retry = 1, factor = 2;
-    
+    fprintf(stdout,"Trying to establish connection with remote host...\n");
     while (current_retry < max_retry){
-        if ((connect(sock, (struct sockaddr *)&address, sizeof(address))) < 0){
+        if ((connect(sock, (struct sockaddr *)address, sizeof(struct sockaddr_in))) < 0){
             perror("Connect");
             sleep(current_retry);
             current_retry *= factor;
         }
         else{
+            fprintf(stdout, "Connection successfull!\n");
             return 0;
         }
     }
@@ -49,7 +50,6 @@ int client_connect_to_remote_node(char * remote_host_address, int remote_host_po
     
     serv_addr.sin_family = AF_INET;
     serv_addr.sin_port = htons(remote_host_port);
-    serv_addr.sin_addr.s_addr = inet_addr(remote_host_address);
     
     // Convert IPv4 and IPv6 addresses from text to binary form
     if(inet_pton(AF_INET, SRV_ADDR, &serv_addr.sin_addr) <=0 ){
@@ -62,7 +62,7 @@ int client_connect_to_remote_node(char * remote_host_address, int remote_host_po
     }
     
     write(sock , snd_str , strlen(snd_str));
-    printf("Hello message sent\n");
+    printf("Message sent\n");
     
     return sock;
 }
