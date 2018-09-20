@@ -1,19 +1,22 @@
 CC= clang
-CFLAGS= -Wall
+CFLAGS= -Wall -Wdeprecated-declarations
 
-INCLUDES=./include
-SRC= ./src
-COMMONS=$(INCLUDES)/general.h
+# Directories
+#
+DIR_INCLUDES=./include
+DIR_SRC= ./src
 
-EXECUTABLES= srv cli
+# Files
+HEADERS=$(DIR_INCLUDES)/*.h
+SRC=$(DIR_SRC)/*.c
 
-all: srv cli
+EXECUTABLES= node
 
-srv: $(INCLUDES)/server.h $(COMMONS)
-	$(CC) $(CFLAGS) $(SRC)/server.c -I $(INCLUDES) -o $@
+all: node
 
-cli: $(INCLUDES)/client.h $(COMMONS)
-	$(CC) $(CFLAGS) $(SRC)/client.c -I $(INCLUDES) -o $@
+node: $(COMMONS_H)
+	$(CC) $(CFLAGS) $(SRC) -I $(DIR_INCLUDES) -o $@
+
 
 .PHONY: clean
 
